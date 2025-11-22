@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MetalMind - Final Boss</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* --- SİSTEM GENELİ --- */
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', Roboto, sans-serif; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
+        
+        /* Glass Panel Tasarımı */
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); }
+        
+        /* Input & Select */
+        input, select { background: #1e293b; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; width: 100%; outline: none; font-size: 14px; transition: border 0.2s; }
+        input:focus { border-color: #3b82f6; }
+
+        /* Butonlar */
+        .btn-primary { background: linear-gradient(to right, #2563eb, #1d4ed8); color: white; font-weight: bold; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); transition: transform 0.1s; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-secondary { background: #334155; color: #cbd5e1; font-weight: bold; transition: transform 0.1s; }
+        .btn-secondary:active { transform: scale(0.98); }
+
+        /* Çip Seçiciler */
+        .chip { padding: 8px 16px; border-radius: 50px; font-size: 12px; font-weight: 600; border: 1px solid #475569; color: #94a3b8; background: transparent; white-space: nowrap; transition: all 0.2s; }
+        .chip-active { background: #3b82f6; color: white; border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+
+        /* Alt Menü */
+        .nav-item { color: #64748b; transition: all 0.3s; display: flex; flex-direction: column; items-center; gap: 4px; }
+        .nav-active { color: #60a5fa; transform: translateY(-3px); }
+        .nav-active i { filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.6)); }
+
+        /* Slider */
+        input[type=range] { -webkit-appearance: none; width: 100%; height: 6px; background: #334155; border-radius: 5px; outline: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; border: 2px solid white; cursor: pointer; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+
+        /* Animasyonlar */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+
+        /* Scroll Bar Gizleme */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <div id="login-screen" class="fixed inset-0 bg-[#0f172a] z-[100] flex items-center justify-center p-6 hidden">
+        <div class="glass w-full max-w-sm p-6 relative fade-in border-t-4 border-blue-500">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-user-shield text-4xl text-blue-500 mb-3"></i>
+                <h3 class="text-2xl font-bold text-white">METALMIND Giriş</h3>
+                <p class="text-sm text-gray-400">Yetkili erişim gereklidir.</p>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Kullanıcı Adı</label>
+                <input type="text" id="login-username" placeholder="fabrika.muhendisi">
+            </div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Şifre</label>
+                <input type="password" id="login-password" placeholder="••••••••">
+            </div>
+            <button onclick="handleLogin()" class="btn-primary w-full py-4 rounded-xl font-bold">SİSTEME GİRİŞ YAP</button>
+            <p id="login-error" class="text-center text-red-400 text-xs mt-3 hidden">Hata!</p>
+        </div>
+    </div>
+
+    <div class="px-6 pt-10 pb-4 bg-[#0f172a]/95 backdrop-blur z-50 border-b border-gray-800 flex justify-between items-center fixed top-0 w-full">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/50">
+                <i class="fa-solid fa-cubes-stacked text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-xl tracking-tight text-white">MetalMind</h1>
+                <div class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider">Sistem Online</p>
+                </div>
+            </div>
+        </div>
+        <div class="text-right">
+            <div class="text-[9px] text-gray-500 uppercase font-bold">LME/USD Kur</div>
+            <div class="font-mono font-bold text-green-400 text-sm" id="live-rate">$<span id="lme-index">832.00</span> / <span id="usd-try-rate">34.15</span></div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-28 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-5 py-3 rounded-full shadow-2xl z-[100] hidden flex items-center gap-3 min-w-[300px] animate-bounce">
+        <i class="fa-solid fa-check-circle"></i>
+        <span class="text-sm font-bold" id="toast-msg">İşlem Başarılı</span>
+    </div>
+
+    <div id="alarm-modal" class="fixed inset-0 bg-black/90 z-[110] hidden flex items-center justify-center backdrop-blur-sm p-6">
+        <div class="glass w-full max-w-sm p-6 relative fade-in">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-crosshairs text-4xl text-blue-500 mb-3"></i>
+                <h3 class="text-xl font-bold">Fiyat Pususu</h3>
+                <p class="text-sm text-gray-400" id="modal-item">DKP Sac</p>
+            </div>
+            <div class="bg-gray-800/50 p-4 rounded-xl mb-4 flex justify-between items-center border border-white/5">
+                <span class="text-xs text-gray-400">Şu Anki En İyi</span>
+                <span class="font-mono font-bold text-xl text-white" id="modal-price">$0.00</span>
+            </div>
+            <div class="mb-6">
+                <label class="text-xs font-bold text-gray-500 uppercase block mb-2">Hedef Fiyat ($)</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-3.5 text-gray-400">$</span>
+                    <input type="number" id="alarm-target" class="pl-8 text-lg font-bold bg-black/40 border-gray-600 focus:border-blue-500" placeholder="0.00">
+                </div>
+            </div>
+            <button onclick="setAlarm()" class="btn-primary w-full py-4 rounded-xl font-bold shadow-lg">PUSUYU KUR</button>
+        </div>
+    </div>
+
+    <div class="pt-24 pb-6 px-4 h-full overflow-y-auto scroll-smooth space-y-6" id="main-container" style="display:none;">
+
+        <div id="tab-market" class="space-y-5 fade-in">
+            
+            <div class="glass p-5 relative">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <div class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1" id="market-label">DKP SAC (TON)</div>
+                        <h2 class="text-4xl font-bold font-mono text-white tracking-tight" id="market-price">$0.00</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs text-gray-400">En İyi Teklif:</span>
+                            <span class="text-xs text-white font-bold bg-blue-600 px-2 py-0.5 rounded" id="market-seller">...</span>
+                        </div>
+                    </div>
+                    <button onclick="openModal()" class="w-10 h-10 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center text-gray-300 hover:text-white hover:bg-red-600 transition shadow-lg">
+                        <i class="fa-solid fa-bell"></i>
+                    </button>
+                </div>
+                <div class="h-32 w-full mt-4">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <button onclick="setMat('dkp')" id="chip-dkp" class="chip chip-active">DKP Sac</button>
+                <button onclick="setMat('hrp')" id="chip-hrp" class="chip">HRP Sac</button>
+                <button onclick="setMat('gal')" id="chip-gal" class="chip">Galvaniz</button>
+                <button onclick="setMat('boya')" id="chip-boya" class="chip">Boya (Kg)</button>
+                <button onclick="setMat('civata')" id="chip-civata" class="chip">Civata (1000)</button>
+                <button onclick="setMat('dubel')" id="chip-dubel" class="chip">Dübel (100)</button>
+            </div>
+
+            <div class="glass overflow-hidden">
+                <div class="bg-gray-800/50 px-4 py-2 border-b border-gray-700 flex justify-between">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase">Tedarikçi</span>
+                    <span class="text-[10px] font-bold text-gray-500 uppercase">Fiyat</span>
+                </div>
+                <div id="supplier-list">
+                    <div class="text-center p-4 text-gray-500">Piyasa Verisi Yükleniyor...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-calc" class="hidden space-y-5 fade-in">
+            <div class="flex justify-between items-end px-1">
+                <h2 class="text-xl font-bold text-white">Maliyet Robotu</h2>
+                <button onclick="resetCalc()" class="text-xs text-red-400 hover:text-white"><i class="fa-solid fa-rotate-left mr-1"></i>Sıfırla</button>
+            </div>
+
+            <div class="glass p-5 border-t-2 border-blue-500">
+                <div class="grid grid-cols-2 gap-2 bg-black/20 p-1 rounded-lg mb-4">
+                    <button onclick="setCalcMode('metal')" id="mode-metal" class="py-2 text-xs font-bold rounded bg-blue-600 text-white">Profil / Sac</button>
+                    <button onclick="setCalcMode('sarf')" id="mode-sarf" class="py-2 text-xs font-bold rounded text-gray-400 hover:text-white">Sarf Malzeme</button>
+                </div>
+
+                <div id="form-metal" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-[10px] text-gray-400 uppercase font-bold mb-1 block">Açınım (mm)</label><input type="number" id="inp-acinim" placeholder="0"></div>
+                        <div><label class="text-[10px] text-gray-400 uppercase font-bold mb-1 block">Kalınlık (mm)</label><input type="number" id="inp-kalinlik" placeholder="0"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-[10px] text-gray-400 uppercase font-bold mb-1 block">Boy (mm)</label><input type="number" id="inp-boy" placeholder="0"></div>
+                        <div><label class="text-[10px] text-gray-400 uppercase font-bold mb-1 block">Adet</label><input type="number" id="inp-adet" value="1"></div>
+                    </div>
+                    <div class="text-[10px] text-gray-500 flex items-center gap-1">
+                        <i class="fa-solid fa-bolt text-yellow-500"></i> Sistem en ucuz DKP/HRP fiyatını (Erdemir vb.) otomatik çeker.
+                    </div>
+                </div>
+
+                <div id="form-sarf" class="hidden space-y-4">
+                    <div>
+                        <label class="text-[10px] text-gray-400 uppercase font-bold mb-1 block">Malzeme Seç</label>
+                        <select id="inp-sarf-type">
+                            <option value="boya">Epoksi Boya</option>
+                            <option value="civata">Civata M10</option>
+                            <option value="dubel">Dübel M12</option>
+                        </select>
+                    </div>
+                    <div><label class="text-[10px] text-gray-400 uppercase font-bold mb-1 block">Miktar</label><input type="number" id="inp-sarf-qty" placeholder="Adet veya Kg"></div>
+                </div>
+
+                <button onclick="calculate()" class="btn-primary w-full py-4 rounded-xl font-bold mt-2 text-sm">HESAPLA</button>
+            </div>
+
+            <div id="calc-result" class="hidden fade-in">
+                <div class="glass text-center p-5 border border-green-500/30 bg-green-500/5">
+                    <p class="text-xs text-gray-400 uppercase mb-1">Toplam Üretim Maliyeti</p>
+                    <h3 class="text-3xl font-mono font-bold text-white mb-1" id="res-total">$0.00</h3>
+                    <p class="text-[10px] text-gray-500" id="res-info">---</p>
+                    
+                    <button onclick="transferToFinance()" class="w-full mt-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-bold text-white flex items-center justify-center gap-2 transition">
+                        FİNANS ANALİZİNE GÖNDER <i class="fa-solid fa-arrow-right text-blue-400"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-boss" class="hidden space-y-5 fade-in">
+            
+            <div class="glass p-4 flex justify-between items-center border-l-4 border-blue-500">
+                <div>
+                    <div class="text-[10px] text-gray-400 uppercase">Maliyet</div>
+                    <div class="text-xl font-bold text-white" id="fin-cost">$0.00</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[10px] text-gray-400 uppercase">Hedef Satış</div>
+                    <input type="number" id="fin-sell" class="w-24 bg-transparent border-none text-right text-xl font-bold text-green-400 p-0 focus:ring-0" value="0" oninput="updateFinance()">
+                </div>
+            </div>
+
+            <div class="glass p-5 border-t-2 border-red-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-gray-200 uppercase"><i class="fa-solid fa-money-bill-trend-up text-red-500 mr-2"></i>Kur Riski</h3>
+                    <span class="text-xs font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded" id="risk-label">%0 Artış</span>
+                </div>
+                <input type="range" min="0" max="40" value="0" id="risk-slider" oninput="updateFinance()">
+                
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                    <div class="bg-black/30 p-3 rounded-lg text-center">
+                        <div class="text-[10px] text-gray-500">Peşin Kâr</div>
+                        <div class="text-lg font-bold text-green-400" id="prof-cash">$0</div>
+                    </div>
+                    <div class="bg-red-900/10 p-3 rounded-lg text-center border border-red-500/20 relative overflow-hidden">
+                        <div class="text-[10px] text-red-300">Vadeli Kâr</div>
+                        <div class="text-lg font-bold text-white" id="prof-risk">$0</div>
+                        <div id="loss-alert" class="hidden absolute inset-0 bg-red-600 flex items-center justify-center text-xs font-bold text-white animate-pulse">ZARAR!</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="glass p-4 border-t-2 border-yellow-500">
+                    <div class="text-[10px] text-gray-400 uppercase mb-1"><i class="fa-solid fa-truck mr-1 text-yellow-500"></i>Lojistik</div>
+                    <div class="text-2xl font-bold text-white mb-1" id="log-count">0</div>
+                    <div class="text-[10px] text-gray-500">Tır Gerekiyor</div>
+                    <div class="text-sm font-bold text-yellow-400 mt-2" id="log-cost">0 ₺</div>
+                </div>
+                <div class="glass p-4 border-t-2 border-purple-500">
+                    <div class="text-[10px] text-gray-400 uppercase mb-1"><i class="fa-regular fa-calendar mr-1 text-purple-500"></i>Teslimat</div>
+                    <div class="text-lg font-bold text-white mb-1 leading-tight" id="ops-date">--</div>
+                    <div class="text-[10px] text-gray-500">Erken Tarih Verme!</div>
+                </div>
+            </div>
+
+            <div class="glass p-5 border-t-2 border-emerald-500">
+                <h3 class="text-sm font-bold text-gray-200 uppercase mb-3"><i class="fa-solid fa-file-invoice-dollar text-emerald-500 mr-2"></i>Teklif Kaydı</h3>
+                
+                <div class="space-y-3 mb-4">
+                    <input type="text" id="inp-client-name" placeholder="Müşteri/Firma Adı">
+                    <input type="text" id="inp-project-name" placeholder="Proje Adı (Örn: Tuzla Depo Raf Sistemi)">
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="saveQuote()" class="btn-primary w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> TEKLİFİ KAYDET
+                    </button>
+                    </div>
+            </div>
+
+        </div>
+
+        <div id="tab-radar" class="hidden space-y-5 fade-in">
+            <h2 class="text-xl font-bold px-1">Canlı İşler</h2>
+            
+            <div class="glass p-5 border-l-4 border-yellow-500">
+                <div class="flex justify-between mb-2">
+                    <span class="bg-yellow-500/20 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded">ACİL</span>
+                    <span class="text-xs text-gray-400">10dk</span>
+                </div>
+                
+                <h3 class="font-bold text-xl text-white">Trendyol - Tuzla Depo</h3>
+                
+                <div class="mt-4 space-y-2">
+                    <div class="flex items-center gap-2 text-sm text-gray-300">
+                        <i class="fa-solid fa-phone w-4 text-blue-400"></i>
+                        <span>+90 532 123 45 67</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-gray-300">
+                        <i class="fa-solid fa-envelope w-4 text-blue-400"></i>
+                        <span>ihaleler@trendyol.com</span>
+                    </div>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-4">Ağır yük rafı, 450 ton çelik.</p>
+            </div>
+            
+            <div class="glass p-5 border-l-4 border-purple-500">
+                <div class="flex justify-between mb-2">
+                    <span class="bg-purple-500/20 text-purple-500 text-[10px] font-bold px-2 py-0.5 rounded">İHALE</span>
+                    <span class="text-xs text-gray-400">2s</span>
+                </div>
+                
+                <h3 class="font-bold text-xl text-white">Namet Gıda</h3>
+                
+                <div class="mt-4 space-y-2">
+                    <div class="flex items-center gap-2 text-sm text-gray-300">
+                        <i class="fa-solid fa-phone w-4 text-blue-400"></i>
+                        <span>+90 216 987 65 43</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-gray-300">
+                        <i class="fa-solid fa-envelope w-4 text-blue-400"></i>
+                        <span>procurement@namet.com.tr</span>
+                    </div>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-4">Soğuk hava deposu. Galvaniz Drive-in.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="fixed bottom-0 w-full bg-[#0f172a] border-t border-gray-800 flex justify-around py-3 pb-6 z-50" style="display:none;" id="bottom-nav">
+        <button onclick="nav('market')" id="nav-market" class="nav-item nav-active w-16">
+            <i class="fa-solid fa-chart-line text-xl"></i>
+            <span class="text-[10px] font-bold">Piyasa</span>
+        </button>
+        <button onclick="nav('calc')" id="nav-calc" class="nav-item w-16">
+            <i class="fa-solid fa-calculator text-xl"></i>
+            <span class="text-[10px] font-bold">Üretim</span>
+        </button>
+        <button onclick="nav('boss')" id="nav-boss" class="nav-item w-16">
+            <i class="fa-solid fa-briefcase text-xl"></i>
+            <span class="text-[10px] font-bold">Patron</span>
+        </button>
+        <button onclick="nav('radar')" id="nav-radar" class="nav-item w-16">
+            <i class="fa-solid fa-crosshairs text-xl"></i>
+            <span class="text-[10px] font-bold">Radar</span>
+        </button>
+    </div>
+
+    <script>
+        // --- AYARLAR VE VERİ ---
+        const BACKEND_URL = 'http://localhost:5000'; 
+        let liveUSD_TRY = 34.15; 
+        let userToken = localStorage.getItem('metalmind_token');
+        let userId = localStorage.getItem('metalmind_userId');
+        let materialData = {}; 
+
+        const CONSTANTS = {
+            TRUCK_CAP: 24000, 
+            TRUCK_PRICE: 35000, 
+            DAILY_CAP: 15000, 
+            BACKLOG: 80000 
+        };
+
+        // Finansal analiz sonuçlarını Frontend'de tutan nesne (Kaydetme için kullanılır)
+        let financeResults = { profCash: 0, profRisk: 0, logCount: 0, opsDate: '', billAmount: 0 };
+        let state = { mat: 'dkp', best: 0, cost: 0, weight: 0, alarms: {} };
+        let chartInstance = null;
+
+        // --- AUTH FONKSİYONLARI ---
+        function checkAuthAndStart() {
+            if (userToken) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-container').style.display = 'block';
+                document.getElementById('bottom-nav').style.display = 'flex';
+                document.body.classList.remove('overflow-hidden');
+                
+                fetchLiveRate();
+                fetchMaterialsAndStartMarket(); 
+                showToast("Giriş Başarılı. Sistem Yükleniyor...");
+            } else {
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+        }
+
+        async function handleLogin() {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+            errorEl.classList.add('hidden');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    errorEl.innerText = data.error || 'Giriş Başarısız. Backend hatası.';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                userToken = data.token;
+                userId = data.userId;
+                localStorage.setItem('metalmind_token', data.token);
+                localStorage.setItem('metalmind_userId', data.userId);
+
+                checkAuthAndStart();
+            } catch (e) {
+                errorEl.innerText = 'Sunucuya bağlanılamadı. Backend kapalı olabilir.';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        // --- PİYASA/VERİ FONKSİYONLARI ---
+        async function fetchLiveRate() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/rates/usd`);
+                const data = await response.json();
+
+                if (data.success) {
+                    liveUSD_TRY = parseFloat(data.USD_TRY);
+                    document.getElementById('usd-try-rate').innerText = liveUSD_TRY.toFixed(2);
+                }
+            } catch (error) {
+                console.warn("Backend'den Kur Çekilemedi. Varsayılan Kur Kullanılıyor.");
+            }
+        }
+
+        async function fetchMaterialsAndStartMarket() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/market/materials`, {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    showToast("Oturum süresi doldu. Lütfen tekrar giriş yapın.");
+                    userToken = null;
+                    checkAuthAndStart();
+                    return;
+                }
+
+                if (!response.ok) throw new Error('Malzeme fiyatları çekilemedi.');
+
+                materialData = await response.json();
+                setMat('dkp'); 
+                
+            } catch (error) {
+                document.getElementById('supplier-list').innerHTML = '<div class="text-center p-4 text-red-400">Piyasa Verisi Çekilemedi! Backend Hatası.</div>';
+                console.error("Malzeme Çekme Hatası:", error);
+            }
+        }
+
+        // --- 2. PİYASA (MARKET) --- (Değişiklik Yok)
+        function nav(tab) {
+            ['market', 'calc', 'boss', 'radar'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
+            document.getElementById('tab-'+tab).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('nav-active'));
+            document.getElementById('nav-'+tab).classList.add('nav-active');
+            document.getElementById('main-container').scrollTop = 0;
+            
+            if (tab === 'boss') {
+                updateFinance();
+            }
+        }
+        function setMat(type) {
+            state.mat = type;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('chip-active'));
+            document.getElementById('chip-'+type).classList.add('chip-active');
+            
+            const labels = {dkp:"DKP SAC (TON)", hrp:"HRP SAC (TON)", gal:"GALVANİZ (TON)", boya:"EPOKSİ BOYA (KG)", civata:"CIVATA (1000)", dubel:"DÜBEL (100)"};
+            document.getElementById('market-label').innerText = labels[type];
+            
+            renderMarket();
+            updateChart();
+        }
+
+        function renderMarket() {
+            const list = document.getElementById('supplier-list');
+            list.innerHTML = '';
+            
+            const data = materialData[state.mat] || [];
+
+            if (data.length === 0) {
+                list.innerHTML = '<div class="text-center p-4 text-gray-500">Bu malzeme için tedarikçi bulunamadı.</div>';
+                document.getElementById('market-price').innerText = '$0.00';
+                document.getElementById('market-seller').innerText = 'N/A';
+                state.best = 0;
+                return;
+            }
+            
+            const sortedData = data.sort((a,b) => a.p - b.p);
+
+            state.best = sortedData[0].p;
+            document.getElementById('market-price').innerText = '$' + state.best.toFixed(2);
+            document.getElementById('market-seller').innerText = sortedData[0].n;
+
+            sortedData.forEach((s, i) => {
+                const isBest = i===0;
+                list.innerHTML += `
+                    <div class="glass p-3 flex justify-between items-center mb-2 ${isBest ? 'border-l-2 border-green-500 bg-green-500/5' : ''}">
+                        <div class="flex items-center gap-3">
+                            <div class="text-xs font-bold text-gray-500 w-4">${i+1}</div>
+                            <div><div class="text-sm font-bold text-white">${s.n}</div><div class="text-[10px] text-gray-400">${s.l}</div></div>
+                        </div>
+                        <div class="font-mono font-bold text-sm ${isBest ? 'text-green-400' : 'text-gray-400'}">$${s.p.toFixed(2)}</div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- 3. HESAPLAMA (CALC) ---
+        async function calculate() {
+            const mode = document.getElementById('form-metal').classList.contains('hidden') ? 'sarf' : 'metal';
+            const payload = { mode };
+
+            if (mode === 'metal') {
+                payload.acinim = parseFloat(document.getElementById('inp-acinim').value) || 0;
+                payload.kalinlik = parseFloat(document.getElementById('inp-kalinlik').value) || 0;
+                payload.boy = parseFloat(document.getElementById('inp-boy').value) || 0;
+                payload.adet = parseFloat(document.getElementById('inp-adet').value) || 1;
+            } else {
+                payload.sarfType = document.getElementById('inp-sarf-type').value;
+                payload.sarfQty = parseFloat(document.getElementById('inp-sarf-qty').value) || 0;
+            }
+
+            if ((mode === 'metal' && (!payload.acinim || !payload.kalinlik || !payload.boy)) || (mode === 'sarf' && !payload.sarfQty)) {
+                 showToast("Lütfen tüm zorunlu alanları doldurun!"); 
+                 return; 
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/calc/cost`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userToken}` },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    showToast(data.error || 'Hesaplama Başarısız!');
+                    return;
+                }
+
+                state.cost = parseFloat(data.cost);
+                state.weight = parseFloat(data.weight);
+                
+                document.getElementById('res-total').innerText = '$' + data.cost;
+                document.getElementById('res-info').innerText = data.info;
+                document.getElementById('calc-result').classList.remove('hidden');
+                
+                document.getElementById('tab-calc').scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+            } catch (e) {
+                showToast("Sunucu Bağlantı Hatası!");
+                console.error('Hesaplama API Hatası:', e);
+            }
+        }
+        
+        function resetCalc() {
+            document.getElementById('calc-result').classList.add('hidden');
+            document.getElementById('inp-acinim').value = '';
+            document.getElementById('inp-kalinlik').value = '';
+            document.getElementById('inp-boy').value = '';
+            document.getElementById('inp-adet').value = '1';
+            document.getElementById('inp-sarf-qty').value = '';
+        }
+
+        function transferToFinance() {
+            document.getElementById('fin-cost').innerText = '$' + state.cost.toFixed(2);
+            document.getElementById('fin-sell').value = (state.cost * 1.35).toFixed(0); 
+            updateFinance();
+            nav('boss');
+            showToast("Finans Analizi Başlatıldı");
+        }
+
+        // --- 4. FİNANS & OPERASYON (BOSS) ---
+        async function updateFinance() {
+            const cost = parseFloat(document.getElementById('fin-cost').innerText.replace('$', '')) || 0;
+            const sell = parseFloat(document.getElementById('fin-sell').value) || 0;
+            const risk = parseInt(document.getElementById('risk-slider').value);
+            const prog = parseInt(document.getElementById('prog-slider').value);
+            const weight = state.weight; 
+
+            if (cost === 0 || sell === 0) return;
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/finance/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userToken}` },
+                    body: JSON.stringify({ cost, weight, sell, risk, prog })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    showToast(data.error || 'Finansal Analiz Başarısız!');
+                    return;
+                }
+
+                // Global financeResults objesini güncelle (Kaydetmek için gerekli)
+                financeResults = data;
+                financeResults.cost = cost; 
+                financeResults.sell = sell;
+                
+                // EKRANI GÜNCELLEME
+                document.getElementById('prof-cash').innerText = '$' + data.profCash;
+                document.getElementById('prof-risk').innerText = '$' + data.profRisk;
+                document.getElementById('log-count').innerText = data.logCount;
+                document.getElementById('log-cost').innerText = "~" + data.logCost + " ₺";
+                document.getElementById('ops-date').innerText = data.opsDate;
+                document.getElementById('bill-amount').innerText = '$' + data.billAmount;
+                document.getElementById('risk-label').innerText = "%"+risk+" Artış";
+                document.getElementById('prog-val').innerText = "%" + prog;
+
+
+                if (parseFloat(data.profRisk) < 0) document.getElementById('loss-alert').classList.remove('hidden');
+                else document.getElementById('loss-alert').classList.add('hidden');
+
+            } catch (e) {
+                showToast("Finans API Bağlantı Hatası!");
+                console.error('Finans API Hatası:', e);
+            }
+        }
+        
+        function updateOps() {
+            updateFinance();
+        }
+
+        // --- YENİ FONKSİYON: TEKLİFİ KAYDETME ---
+        async function saveQuote() {
+            const clientName = document.getElementById('inp-client-name').value.trim();
+            const projectName = document.getElementById('inp-project-name').value.trim();
+
+            if (!clientName || !projectName || financeResults.cost === 0) {
+                showToast("Lütfen Müşteri Adı ve Proje Adını girin ve bir maliyet hesaplayın!");
+                return;
+            }
+
+            try {
+                const payload = {
+                    cost: financeResults.cost,
+                    sell: financeResults.sell,
+                    cashProfit: parseFloat(financeResults.profCash),
+                    riskProfit: parseFloat(financeResults.profRisk),
+                    weight: state.weight,
+                    trucks: parseInt(financeResults.logCount),
+                    deliveryDate: financeResults.opsDate, // Backend tarih formatına çevirecektir
+                    clientName: clientName,
+                    projectName: projectName
+                };
+
+                const response = await fetch(`${BACKEND_URL}/api/quotes/save`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}` 
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    showToast(data.error || 'Teklif Kaydedilemedi!');
+                    return;
+                }
+
+                showToast(`Teklif başarıyla kaydedildi! ID: ${data.quoteId}`);
+                document.getElementById('inp-client-name').value = '';
+                document.getElementById('inp-project-name').value = '';
+
+            } catch (e) {
+                showToast("Kaydetme sırasında Sunucu Hatası!");
+                console.error('Kaydetme API Hatası:', e);
+            }
+        }
+
+
+        // --- YARDIMCI FONKSİYONLAR ---
+        function openModal() { 
+            document.getElementById('alarm-modal').classList.remove('hidden');
+            document.getElementById('modal-item').innerText = state.mat.toUpperCase();
+            document.getElementById('modal-price').innerText = '$' + state.best.toFixed(2);
+        }
+        function closeModal() { document.getElementById('alarm-modal').classList.add('hidden'); }
+        function setAlarm() { 
+            const val = parseFloat(document.getElementById('alarm-target').value);
+            if(val>0) { state.alarms[state.mat]=val; showToast("Alarm Kuruldu: $"+val); closeModal(); }
+        }
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.remove('hidden');
+            setTimeout(()=>t.classList.add('hidden'), 3000);
+        }
+
+        // Chart (Aynı kaldı)
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [1,2,3,4,5], datasets: [{ data: [0,0,0,0,0], borderColor: '#3b82f6', borderWidth: 3, tension: 0.4, pointRadius: 0 }] },
+            options: { plugins: {legend:false}, scales: {x:{display:false}, y:{display:false}}, animation:false, maintainAspectRatio: false }
+        });
+        function updateChart() {
+            const b = state.best || 850;
+            chart.data.datasets[0].data = [b-2, b+3, b-1, b+4, b];
+            chart.update();
+        }
+
+        // Döngü (Piyasa Kontrolü)
+        setInterval(() => {
+            if(userToken) {
+                if(state.alarms[state.mat] && state.best <= state.alarms[state.mat]) {
+                    showToast("YAKALA! Fiyat Düştü!"); delete state.alarms[state.mat];
+                }
+            }
+        }, 2500);
+
+        // Başlangıç: Yetki kontrolü yap
+        checkAuthAndStart(); 
+
+    </script>
+</body>
+</html>
